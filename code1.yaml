@@ -1,0 +1,120 @@
+- name: Launch EC2 instance and deploy secure web server
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    region: "us-east-1"  #REGION FOR EC2
+    image_id: "ami-0c94855ba95c71c99"  # Ubuntu 20.04 LTS
+    instance_type: "t2.micro"
+    security_group: "webserver-sg" #SG GROUP
+    keypair: "my-ssh-keypair"
+    subnet_id: "subnet-XXXXXXXXX"  #  subnet ID
+    ssh_user: "ubuntu"
+    ssh_key: "/path/to/my-ssh-keypair.pem"
+
+  tasks:
+    - name: Create security group
+      ec2_group:
+        name: webserver-sg
+        description: Security group for my web server
+        region: "{{ region }}"
+        rules:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 443
+            to_port: 443
+            cidr_ip: 0.0.0.0/0
+      register: security_group
+
+    - name: Add tags to security group
+      ec2_tag:
+        resource: "{{ security_group.group_id }}"
+        region: "{{ region }}"
+        state: present
+        tags:
+          Name: webserver-sg
+
+    # Launch EC2 instance
+    - name: Launch EC2 instance
+      ec2:
+        region: "{{ region }}"
+        key_name: "{{ keypair }}"
+        instance_type: "{{ instance_type }}"
+        image_id: "{{ image_id }}"
+        vpc_subnet_id: "{{ subnet_id }}"
+        assign_public_ip: yes
+        group: "{{ security_group }}"
+        count: 1
+        instance_tags:
+          Name: "webserver"
+      register: ec2_instance
+
+    # Wait for the instance to become reachable
+    - name: Wait for instance to become reachable
+      wait_for:
+        host: "{{ ec2_instance.instances[0].public_ip }}"
+        port: 22
+        state: started
+        delay: 10
+        timeout: 300
+
+    # Set up SSH key permissions
+    - name: Set up SSH key permissions
+      file:
+        path: "{{ ssh_key }}"
+        mode: '0600'
+
+    # Add EC2 instance to the host group
+    - name: Add EC2 instance to the host group
+      add_host:
+        name: "{{ ec2_instance.instances[0].public_ip }}"
+        groups: webserver
+
+- name: Configure Apache to redirect HTTP
+  hosts: webserver
+  become: true
+
+  tasks:
+    # Install Apache web server and OpenSSL
+    - name: Install Apache web server and OpenSSL
+      apt:
+        name:
+          - apache2
+          - openssl
+        state: present
+
+    # Generate self-signed SSL certificate
+    - name: Generate self-signed SSL certificate
+      command: openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout /etc/ssl/private/apache-selfsigned.key -out /etc/ssl/certs/apache-selfsigned.crt
+
+    # Configure Apache to redirect HTTP [testhost.com is a pseduo domain used here]
+    - name: Configure Apache to redirect HTTP
+      lineinfile:
+        dest: /etc/apache2/sites-enabled/000-default.conf
+        line: |
+          <VirtualHost *:80>
+              ServerName testhost.com  
+              Redirect permanent / https://testhost.com/
+          </VirtualHost>
+      state: present
+      insertafter: "<VirtualHost *:80>"
+    - name: Configure Apache for HTTPS
+      lineinfile:
+        dest: /etc/apache2/sites-enabled/000-default.conf
+        line: |
+          <VirtualHost *:443>
+              ServerName testhost.com
+              SSLEngine on
+              SSLCertificateFile /etc/ssl/certs/apache-selfsigned.crt
+              SSLCertificateKeyFile /etc/ssl/private/apache-selfsigned.key
+              DocumentRoot /var/www/html
+          </VirtualHost>
+      state: present
+      insertafter: "<VirtualHost *:80>"
