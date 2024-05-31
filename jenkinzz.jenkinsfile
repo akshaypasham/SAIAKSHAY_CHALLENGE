@@ -41,7 +41,7 @@ pipeline {
                         // Set a custom message to inform that the build is skipped
                         currentBuild.result = 'NOT_BUILT'
                         echo 'Skipping the build because the specific file has not changed.'
-                        return // Skip the rest of the stage if the file has not changed
+                        return // Skip the rest of the stage if the file has not changedcgccf
                     }
                 }
             }
