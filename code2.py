@@ -7,7 +7,7 @@ for i in range(n):
     if re.match(r'^[456]\d{3}-?\d{4}-?\d{4}-?\d{4}$', cnum):      # MATCH REGULAR EXP AGAINST STRING
         cnum = cnum.replace('-', '') #REMOVES HYPHEN FOR EASE OF CHECKING
         if re.search(r'(\d)\1{3}', cnum):     # SEARCH FOR REPITATIVE DIGITS THROWS INVALID THE NUMBER HAS 4 OR MORE CONSECUTIVE REPEATED DIGITS 
-            print('Invalid')
+            print('Invalid answer')
         else:
             print('Valid')
     else:
