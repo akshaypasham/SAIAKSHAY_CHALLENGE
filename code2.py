@@ -11,4 +11,4 @@ for i in range(n):
         else:
             print('Valid wmnljfnelfnmlew')
     else:
-        print('Invalid 12312341243454233')
+        print('Invalid 123123')
