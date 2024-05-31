@@ -9,6 +9,6 @@ for i in range(n):
         if re.search(r'(\d)\1{3}', cnum):     # SEARCH FOR REPITATIVE DIGITS THROWS INVALID THE NUMBER HAS 4 OR MORE CONSECUTIVE REPEATED DIGITS 
             print('Invalid answer')
         else:
-            print('Valid 12klrnlkewmnljfnelfnmlew')
+            print('Valid wmnljfnelfnmlew')
     else:
         print('Invalid 12312341243454233')
