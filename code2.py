@@ -13,6 +13,3 @@ for i in range(n):
     else:
         print('Invalid kewhnfjknfjkwehn3123')
 
-
-#nlkqjlkdnl
-bjgjhgghg
