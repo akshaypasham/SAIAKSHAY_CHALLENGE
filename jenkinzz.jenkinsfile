@@ -1,0 +1,60 @@
+pipeline {
+    agent any
+
+    triggers {
+        githubPush()
+    }
+
+    environment {
+        TARGET_FILE = 'code2.py'
+        TARGET_BRANCH = 'hello'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the specific branch
+                script {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "*/${TARGET_BRANCH}"]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [],
+                        userRemoteConfigs: [[url: 'https://github.com/akshaypasham/SAIAKSHAY_CHALLENGE.git']]
+                    ])
+                }
+            }
+        }
+
+        stage('Check File Change') {
+            steps {
+                script {
+                    // Get the list of changed files in the latest commit
+                    def changedFiles = sh(script: "git diff-tree --no-commit-id --name-only -r HEAD", returnStdout: true).trim().split('\n')
+
+                    // Check if the specific file is in the list of changed files
+                    if (changedFiles.contains(TARGET_FILE)) {
+                        echo "${TARGET_FILE} has changed. Proceeding with the build..."
+                        return // Skip the rest of the stage if the file has changed
+                    } else {
+                        echo "${TARGET_FILE} has not changed. Skipping the build..."
+                        // Set a custom message to inform that the build is skipped
+                        currentBuild.result = 'NOT_BUILT'
+                        echo 'Skipping the build because the specific file has not changed.'
+                        return // Skip the rest of the stage if the file has not changed
+                    }
+                }
+            }
+        }
+
+        stage('Build') {
+            when {
+                expression { currentBuild.result != 'NOT_BUILT' }
+            }
+            steps {
+                echo 'Running the build because the specific file has changed...'
+                // Add your build steps here
+            }
+        }
+    }
+}
